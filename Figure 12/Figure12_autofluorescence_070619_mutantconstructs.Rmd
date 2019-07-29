@@ -1,0 +1,169 @@
+---
+title: "070619 autofluorescence mutant constructs"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(data.table)
+rm(list=ls())
+
+library(ggplot2)
+library(ggsignif)
+library(ggpubr)
+library(doBy)
+library(readxl)
+library(dplyr)
+library(tidyr)
+
+setwd("~/Desktop/NEW Rx1/Figures /Figure 12")
+
+
+#Read in different sheets 
+read0<-read_excel("autofluorescence-T=0_070619.xlsx", skip=40, sheet=1)
+
+read1<-read_excel("autofluorescence-T=1_070619.xlsx", skip=40, sheet=1)
+
+read2<-read_excel("autofluorescence-T=2_070619.xlsx", skip=40, sheet=1)
+
+read3<-read_excel("autofluorescence-T=3_070619.xlsx", skip=40, sheet=1)
+
+read4<-read_excel("autofluorescence-T=4_070619.xlsx", skip=40, sheet=1)
+
+read5<-read_excel("autofluorescence-T=5_070619.xlsx", skip=40, sheet=1)
+
+read6<-read_excel("autofluorescence-T=6_070619.xlsx", skip=40, sheet=1)
+
+
+#Add timepoints to dataframes
+read1$Timepoint <- rep(1,times=nrow(read1))
+read2$Timepoint <- rep(2,times=nrow(read2))
+read3$Timepoint <- rep(3,times=nrow(read3))
+read4$Timepoint <- rep(4,times=nrow(read4))
+read5$Timepoint <- rep(5,times=nrow(read5))
+read6$Timepoint <- rep(6,times=nrow(read6))
+
+#Bind all data frames to one
+read_trial <- rbind(read1,read2, read3, read4, read5, read6)
+
+#Create Tn/T0 to create foldchange dataframe 
+read_factor <- read0 %>%
+  mutate(`Read 1:430,530` = 1/`Read 1:430,530`,
+         `Read 2:480,690` = 1/`Read 2:480,690`)
+
+read_foldchange <- read_trial %>%
+  mutate(`Foldchange1` = `Read 1:430,530`*read_factor$`Read 1:430,530`,
+         `Foldchange2` = `Read 2:480,690`*read_factor$`Read 2:480,690`)
+read_foldchange <- read_foldchange[,-c(2:3)]
+```
+
+```{r}
+
+#Annotate 96-well plate with samples/treatments and format in longdataframe
+row1  = "Rx1"
+row2  = "Rx1"
+row3 = "C328A"
+row4 = "C328A"
+row5 = "L301A"
+row6 = "L301A"
+row7 = "S202F"
+row8 = "S202F"
+
+Rowlabel1  =   "CP105" 
+Rowlabel2   =   "CP106" 
+Rowlabel3   =   "CP105" 
+Rowlabel4   =   "CP106"
+Rowlabel5   =   "CP105"
+Rowlabel6   =   "CP106"
+Rowlabel7   =   "CP105"
+Rowlabel8   =   "CP106"
+
+longdf <- as.data.frame(separate(read_foldchange, Well, 
+                            into = c("Sample", "Replicate"), 
+                            sep = "(?<=[A-Za-z])(?=[0-9])"))
+
+longdf$Replicate<- as.numeric(longdf$Replicate)
+
+longdf$Line[longdf$Sample=="A"]<- row1
+longdf$Line[longdf$Sample=="B"]<- row2
+longdf$Line[longdf$Sample=="C"]<- row3
+longdf$Line[longdf$Sample=="D"]<- row4
+longdf$Line[longdf$Sample=="E"]<- row5
+longdf$Line[longdf$Sample=="F"]<- row6
+longdf$Line[longdf$Sample=="G"]<- row7
+longdf$Line[longdf$Sample=="H"]<- row8
+
+longdf$Treatment[longdf$Sample=="A"]<- Rowlabel1
+longdf$Treatment[longdf$Sample=="B"]<- Rowlabel2
+longdf$Treatment[longdf$Sample=="C"]<- Rowlabel3
+longdf$Treatment[longdf$Sample=="D"]<- Rowlabel4
+longdf$Treatment[longdf$Sample=="E"]<- Rowlabel5
+longdf$Treatment[longdf$Sample=="F"]<- Rowlabel6
+longdf$Treatment[longdf$Sample=="G"]<- Rowlabel7
+longdf$Treatment[longdf$Sample=="H"]<- Rowlabel8
+
+longdf <- longdf[!(longdf$Line=="empty"),] 
+
+longdf <- longdf %>%
+  mutate(Sample = as.factor(Sample),
+         Treatment = as.factor(Treatment),
+         Replicate = as.factor(Replicate),
+         Timepoint = as.factor(Timepoint)) %>%
+  filter(Foldchange1<1.5 & Foldchange2< 1.5)
+              
+data <- summaryBy(.~Sample+Treatment+Timepoint+Line, data=longdf, FUN=c(length,mean,sd))
+```
+
+```{r}
+#Plot foldchange over time 
+p1 <- ggplot(longdf, aes(x=Timepoint, y=Foldchange1,fill=Treatment))+
+       geom_boxplot(width= 0.5, position=position_dodge(width = 0.6),
+              outlier.size=1.5,
+              outlier.color = "grey20",
+              outlier.shape="o")+
+      facet_grid(~Line, scales = "free_y") +scale_x_discrete(labels = c("1", "2", "3", "4", "5", "6")) +
+      labs(title = "Autofluorescence ",
+           subtitle = "430nm/530nm")+
+      ylab ("fold change (Tn/T0)")+ stat_compare_means(data = longdf, 
+                        method="wilcox.test", 
+                        size=3,
+                        label.sep = "  , ",
+                        position = "identity",
+                        label="p.signif") +scale_fill_manual(values = c("CP105" = "#7C9AF3", "CP106" = "#FD615C")) +theme_classic(base_size=20)+theme(
+            legend.position="top",
+            legend.margin=margin(0,0,0,0),
+            legend.box.margin=margin(-5,-5,-5,-5))
+
+p1 
+ggsave("p1.pdf")
+```
+
+```{r}
+p2 <- ggplot(longdf, aes(x=Timepoint, y=Foldchange2,fill=Treatment))+
+       geom_boxplot(width= 0.5, position=position_dodge(width = 0.6),
+              outlier.size=1.5,
+              outlier.color = "grey20",
+              outlier.shape="o")+
+         facet_grid(~Line, scales = "free_y") +scale_x_discrete(labels = c("1", "2", "3", "4", "5", "6")) +
+      labs(title = "Autofluorescence ",
+           subtitle = "480nm/690nm")+
+      ylab ("fold change (Tn/T0)") + stat_compare_means(data = longdf, 
+                        method="wilcox.test", 
+                        size=3,
+                        label.sep = "  , ",
+                        position = "identity",
+                        label="p.signif") +scale_fill_manual(values = c("CP105" = "#7C9AF3", "CP106" = "#FD615C")) +theme_classic(base_size=20)+theme(
+            legend.position="top",
+            legend.margin=margin(0,0,0,0),
+            legend.box.margin=margin(-5,-5,-5,-5))
+
+p2
+ggsave("p2.pdf")
+```
+```{r}
+
+
+
+```

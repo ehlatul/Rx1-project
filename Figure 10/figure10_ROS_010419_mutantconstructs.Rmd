@@ -1,0 +1,300 @@
+---
+title: "Total cumulative boxplot data"
+author: "Emy Latul"
+date: "3/3/2018"
+output: html_document
+---
+Loading data and packages
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+rm(list=ls())
+
+library(ggplot2)
+library(tidyr)
+library(dplyr)
+library(readxl)
+library(doBy)
+#library(gdtools)
+library(magrittr)
+library(ggpubr)
+library(psych)
+library(wesanderson)
+
+
+row1.1  = "Rx1"
+row2.1  = "Rx1"
+row3.1 = "C328A 65"
+row4.1 = "C328A 65"
+row5.1 = "C328A 66"
+row6.1 = "C328A 66"
+row7.1 = "L301A 65"
+row8.1 = "L301A 65"
+
+row1.2  = "Rx1"
+row2.2  = "Rx1"
+row3.2 = "L301A 66"
+row4.2 = "L301A 66"
+row5.2 = "L301A 65"
+row6.2 = "L301A 65"
+row7.2 = "C328A 65"
+row8.2 = "C328A 65"
+
+row1.3  = "Rx1"
+row2.3  = "Rx1"
+row3.3 = "C328A 65"
+row4.3 = "C328A 65"
+row5.3 = "C328A 66"
+row6.3 = "C328A 66"
+row7.3 = "L301A 66"
+row8.3 = "L301A 66"
+
+##The script assigns artificial times to samples. 
+##Assign which timepoints you want to have depicted on your X-axes
+TimeAxis      =   c(0,9,17,25,33,41) ##change numbers to create Axis-ticks at these timpoints
+##Assign the "real time" to the timepoints assigned above
+RealTime      =   c("00:00", ##change the values between quotation marks, note that the format follows the one indicated above (at LabelXaxis)
+                    "00:30", 
+                    "00:59",
+                    "01:29",
+                    "01:58",
+                    "02:28")
+
+##What will be the filename of the graphics produced?
+FileNameSVG = "total_cumulative_boxplot_1/03/2019.svg"
+FileNamePDF = "total_cumulative_boxplot_1/03/2019.pdf"
+```
+
+```{r}
+row1.1  = "Rx1"
+row2.1  = "Rx1"
+row3.1 = "C328A"
+row4.1 = "C328A"
+row5.1 = "C328A"
+row6.1 = "C328A"
+row7.1 = "L301A"
+row8.1 = "L301A"
+
+row1.2  = "Rx1"
+row2.2  = "Rx1"
+row3.2 = "L301A"
+row4.2 = "L301A"
+row5.2 = "L301A"
+row6.2 = "L301A"
+row7.2 = "C328A"
+row8.2 = "C328A"
+
+row1.3  = "Rx1"
+row2.3  = "Rx1"
+row3.3 = "C328A"
+row4.3 = "C328A"
+row5.3 = "C328A"
+row6.3 = "C328A"
+row7.3 = "L301A"
+row8.3 = "L301A"
+
+```
+
+```{r}
+
+##Graphical output: Adjust sample names, axes, axis-labels, etc.
+GraphTitle    =   "ROS burst, DEX::CP10x"
+GraphSubTitle =   "Atum OD = 0.2"
+LegendTitle   =   "Mutants"
+
+LabelYaxis    =   "Luminescence (AU)"
+LabelXaxis    =   "Time after DEX-induction (hh:mm)"
+
+##This will be the name of you samples in the Legend.
+Rowlabel1  =   "CP105" 
+Rowlabel2   =   "CP106" 
+Rowlabel3   =   "CP105" 
+Rowlabel4   =   "CP106"
+Rowlabel5   =   "CP105"
+Rowlabel6   =   "CP106"
+Rowlabel7   =   "CP105"
+Rowlabel8   =   "CP106"
+
+#Setting labels
+plottitle = "ROS"
+plotsubtitle = ""
+yaxislabel = "Luminescence (AU)"
+xaxislabel = ""
+```
+
+```{r}
+#read all  datasheets
+
+widedata1 <- as.data.frame(read_excel("~/Desktop/Rx1 Msc internship/ROS-burst plate reader/ROS_Data_excel/Mutant constructs/ROS_010419.xlsx", sheet = 4))
+
+widedata2 <-as.data.frame(read_excel("~/Desktop/Rx1 Msc internship/ROS-burst plate reader/ROS_Data_excel/Mutant constructs/ROS_010419.xlsx", sheet = 5))
+
+widedata3 <- as.data.frame(read_excel("~/Desktop/Rx1 Msc internship/ROS-burst plate reader/ROS_Data_excel/Mutant constructs/ROS_010419.xlsx", sheet = 6))
+
+
+##adding simple Timepoints to simple values
+widedata1$Timepoint <- seq.int(nrow(widedata1))
+widedata2$Timepoint <- seq.int(nrow(widedata2))
+widedata3$Timepoint <- seq.int(nrow(widedata3))
+##dropping columns with unnecessary stuff
+widedata1$Time<-NULL
+widedata1$Temperature <-NULL
+widedata2$Time<-NULL
+widedata2$Temperature <-NULL
+widedata3$Time<-NULL
+widedata3$Temperature <-NULL
+
+```
+
+```{r}
+##make longdata
+longdf1 <- as.data.frame(gather(widedata1,Replicate,Measurement, A1:H12, factor_key=TRUE) %>%
+            separate(Replicate, 
+                            into = c("Sample", "Replicate"), 
+                            sep = "(?<=[A-Za-z])(?=[0-9])"
+           ))
+longdf2 <- as.data.frame(gather(widedata2,Replicate,Measurement, A1:H12, factor_key=TRUE) %>%
+            separate(Replicate, 
+                            into = c("Sample", "Replicate"), 
+                            sep = "(?<=[A-Za-z])(?=[0-9])"
+           ))
+longdf3 <- as.data.frame(gather(widedata3,Replicate,Measurement, A1:H12, factor_key=TRUE) %>%
+            separate(Replicate, 
+                            into = c("Sample", "Replicate"), 
+                            sep = "(?<=[A-Za-z])(?=[0-9])"
+           ))
+
+longdf1$Replicate <- as.numeric(longdf1$Replicate)
+longdf2$Replicate <- as.numeric(longdf2$Replicate)
+longdf3$Replicate <- as.numeric(longdf3$Replicate)
+
+longdf1$Line[longdf1$Sample=="A"]<- row1.1
+longdf1$Line[longdf1$Sample=="B"]<- row2.1
+longdf1$Line[longdf1$Sample=="C"]<- row3.1
+longdf1$Line[longdf1$Sample=="D"]<- row4.1
+longdf1$Line[longdf1$Sample=="E"]<- row5.1
+longdf1$Line[longdf1$Sample=="F"]<- row6.1
+longdf1$Line[longdf1$Sample=="G"]<- row7.1
+longdf1$Line[longdf1$Sample=="H"]<- row8.1
+
+longdf2$Line[longdf2$Sample=="A"]<- row1.2
+longdf2$Line[longdf2$Sample=="B"]<- row2.2
+longdf2$Line[longdf2$Sample=="C"]<- row3.2
+longdf2$Line[longdf2$Sample=="D"]<- row4.2
+longdf2$Line[longdf2$Sample=="E"]<- row5.2
+longdf2$Line[longdf2$Sample=="F"]<- row6.2
+longdf2$Line[longdf2$Sample=="G"]<- row7.2
+longdf2$Line[longdf2$Sample=="H"]<- row8.2
+
+longdf3$Line[longdf3$Sample=="A"]<- row1.3
+longdf3$Line[longdf3$Sample=="B"]<- row2.3
+longdf3$Line[longdf3$Sample=="C"]<- row3.3
+longdf3$Line[longdf3$Sample=="D"]<- row4.3
+longdf3$Line[longdf3$Sample=="E"]<- row5.3
+longdf3$Line[longdf3$Sample=="F"]<- row6.3
+longdf3$Line[longdf3$Sample=="G"]<- row7.3
+longdf3$Line[longdf3$Sample=="H"]<- row8.3
+
+longdf <- rbind(longdf1, longdf2)
+longdf <- rbind(longdf, longdf3)
+
+longdf$Treatment[longdf$Sample=="A"]<- Rowlabel1
+longdf$Treatment[longdf$Sample=="B"]<- Rowlabel2
+longdf$Treatment[longdf$Sample=="C"]<- Rowlabel3
+longdf$Treatment[longdf$Sample=="D"]<- Rowlabel4
+longdf$Treatment[longdf$Sample=="E"]<- Rowlabel5
+longdf$Treatment[longdf$Sample=="F"]<- Rowlabel6
+longdf$Treatment[longdf$Sample=="G"]<- Rowlabel7
+longdf$Treatment[longdf$Sample=="H"]<- Rowlabel8
+
+```
+
+```{r}
+x <- longdf[!table(longdf$Measurement)[longdf$Measurement] < 10,] 
+```
+
+
+
+```{r}
+#summarize statisticss
+data <- summaryBy(.~Timepoint+Line+Treatment, data=longdf, FUN=c(length,mean,sd))
+data$Line <- as.factor(data$Line)
+data$Treatment <- as.factor(data$Treatment)
+```
+
+```{r}
+p1 <- ggplot(data, aes(x=Timepoint, y=Measurement.mean, color=Treatment)) + 
+   facet_wrap(~Line,
+                scales="free_y")+
+                   scale_x_continuous(LabelXaxis,
+                                      breaks = TimeAxis,
+                                      labels = RealTime,)+
+    geom_point(size=2, 
+               alpha = 0.5, 
+               position = position_dodge(0.05))+
+    geom_line(alpha = 0.6)+
+    geom_errorbar(aes(ymin=Measurement.mean-Measurement.sd, ymax=Measurement.mean+Measurement.sd), 
+                      width=0.2, 
+                      alpha = 0.6)+  scale_color_manual(values=c("CP105" = "#7C9AF3", "CP106" = "#FD615C"))+theme_classic(base_size=20)+theme(
+            legend.position="top")+ labs(title ="ROS production", x = "Time after DEX-induction (h:min) ", y = "Luminescence (AU)" )
+p1  
+```
+
+```{r}
+#cumulate data
+cumuldata <- aggregate(.~Sample+Replicate+Treatment+Line, data=longdf, sum, na.rm=TRUE)
+cumuldata$Timepoint <- NULL
+
+```
+
+
+```{r}
+p2 <- ggplot(cumuldata, aes(x=Line, y=Measurement,fill=Line))+
+       geom_boxplot(width= 0.5, position=position_dodge(width = 0.6),
+              outlier.size=1.5,
+              outlier.color = "grey20",
+              outlier.shape="o")+
+      facet_grid(~Treatment)+
+      labs(title = plottitle,
+           subtitle = "Cumulative ROS")+
+      ylab (yaxislabel)
+
+p2+ scale_fill_manual(values = wes_palette("FantasticFox1"))
+```
+
+```{r}
+#statistical comparisons
+my_comparisons_A<- list( c("C328A", "L301A"), c("L301A", "Rx1"), c("C328A", "Rx1"))
+my_comparisons_B<- list( c("CP106", "CP105"))
+```
+
+#total cumulated data 
+```{r, echo=FALSE}
+pA <- ggplot(cumuldata, aes(x=Line, y=Measurement,fill=Line))+
+       geom_boxplot(width= 0.5, position=position_dodge(width = 0.6),
+              outlier.size=1.5,
+              outlier.color = "grey20",
+              outlier.shape="o")+facet_grid(~Treatment)+ stat_compare_means(comparisons = my_comparisons_A, method = "t.test", label = "p.signif")+theme_classic(base_size=20)+theme(
+            legend.position="top")+ labs(title ="Cumulative ROS production", x = " ", y = "Luminescence (AU)" ) + scale_fill_manual(values = wes_palette("FantasticFox1"))  
+
+pA
+```
+#total cumulated data 
+```{r, echo=FALSE}
+pB <- ggplot(cumuldata, aes(x=Treatment, y=Measurement,fill=Treatment))+
+       geom_boxplot(width= 0.5, position=position_dodge(width = 0.6),
+              outlier.size=1.5,
+              outlier.color = "grey20",
+              outlier.shape="o")+facet_grid(~Line)+ stat_compare_means(comparisons = my_comparisons_B, method = "t.test", label = "p.signif")  + scale_fill_manual(values = c("CP105" = "#7C9AF3", "CP106" = "#FD615C"))+theme_classic(base_size=20)+theme(
+            legend.position="top")+ labs(title ="Cumulative ROS production", x = " ", y = "Luminescence (AU)" ) 
+
+pB
+```
+
+
+```{r, echo=FALSE}
+ggsave("pA.pdf")
+ggsave("p1.pdf", height= 10, width=15)
+ggsave("pB.pdf")
+```
